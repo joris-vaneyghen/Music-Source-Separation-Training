@@ -5,12 +5,8 @@ setup(
     version='0.1.0',
     description='Music source separation training tools',
     author='Unknown',
-    packages=find_packages(include=[
-        'models*',
-        'scripts*',
-        'configs*',
-        'tests*'
-    ]),
+    packages=find_packages(where="."),
+    package_dir={"": "."},
     py_modules=[
         'dataset',
         'ensemble',
