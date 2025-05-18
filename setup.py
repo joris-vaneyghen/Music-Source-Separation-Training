@@ -1,25 +1,29 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='mms_training',
+    name='music_source_separation_training',
     version='0.1.0',
-    description='Audio source separation tool for isolating vocals and instruments',
-    author='Roman Solovyev (ZFTurbo): https://github.com/ZFTurbo/',
-    author_email='',
-    packages=find_packages(),
-    install_requires=[
-        'librosa',
-        'torch',
-        'soundfile',
-        'numpy',
-        'tqdm',
-        'matplotlib',
-        'argparse'
+    description='Music source separation training tools',
+    author='Unknown',
+    packages=find_packages(include=[
+        'models*',
+        'scripts*',
+        'configs*',
+        'tests*'
+    ]),
+    py_modules=[
+        'dataset',
+        'ensemble',
+        'inference',
+        'metrics',
+        'train',
+        'train_accelerate',
+        'utils',
+        'valid'
     ],
-    python_requires='>=3.7',
-    entry_points={
-        'console_scripts': [
-            'mms_training=inference:proc_folder',
-        ],
-    },
+    install_requires=[
+
+    ],
+    include_package_data=True,
+    zip_safe=False,
 )

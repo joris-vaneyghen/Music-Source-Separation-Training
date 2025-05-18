@@ -1,0 +1,16 @@
+# Include all YAML config files
+recursive-include configs *.yaml
+
+# Include any additional YAML files (e.g., in musdb folders)
+recursive-include models *.yaml
+
+# Include all scripts and models (in case they're missing __init__.py)
+recursive-include scripts *.py
+recursive-include models *.py
+
+# Include all test files
+recursive-include tests *.py
+
+# Include README and requirements
+include README.md
+include requirements.txt
