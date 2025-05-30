@@ -376,6 +376,18 @@ class MSSDataset(torch.utils.data.Dataset):
                 if random.uniform(0, 1) < augs['random_polarity']:
                     source = -source.copy()
                     applied_augs.append('random_polarity')
+        # Random convert stereo to mono (identical left and right channel)
+        if 'stereo_to_mono' in augs:
+            if augs['stereo_to_mono'] > 0:
+                if random.uniform(0, 1) < augs['stereo_to_mono']:
+                    # Generate random perceptual weights that sum to 1
+                    w_left = random.uniform(0.0, 1.0)
+                    w_right = 1.0 - w_left
+                    # Apply perceptual weighting
+                    mono = w_left * source[0] + w_right * source[1]
+                    # Duplicate mono to both channels to maintain shape (2, n)
+                    source = np.vstack([mono, mono])
+                    applied_augs.append('stereo_to_mono')
         # Random pitch shift
         if 'pitch_shift' in augs:
             if augs['pitch_shift'] > 0:
