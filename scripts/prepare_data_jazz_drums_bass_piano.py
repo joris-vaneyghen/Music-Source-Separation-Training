@@ -22,26 +22,28 @@ for subdir in os.listdir(valid_path):
 
         # Read the audio files
         drums, sr = sf.read(os.path.join(subdir_path, "drums.wav"))
+        piano, _ = sf.read(os.path.join(subdir_path, "piano.wav"))
         bass, _ = sf.read(os.path.join(subdir_path, "bass.wav"))
 
         # Ensure all arrays have the same shape by taking the minimum length
-        min_length = min(drums.shape[0], bass.shape[0])
+        min_length = min(drums.shape[0], piano.shape[0], bass.shape[0])
         drums = drums[:min_length]
+        piano = piano[:min_length]
         bass = bass[:min_length]
 
         # Create silent stereo audio with same length
         silence = np.zeros((min_length, 2))
 
         # Overlay the tracks by summing
-        mixture = drums + bass
+        mixture = drums + bass + piano
 
-        # Save the mixture and silence for other and piano in destination directory
+        # Save the mixture and silence for other and bass in destination directory
         sf.write(os.path.join(subdir_dest_path, "mixture.wav"), mixture, sr)
         sf.write(os.path.join(subdir_dest_path, "other.wav"), silence, sr)
-        sf.write(os.path.join(subdir_dest_path, "piano.wav"), silence, sr)
 
-        # Also copy drums.wav and bass.wav to destination (though they should already be copied above)
+        # Also copy drums.wav,bass.wav and piano.wav to destination (though they should already be copied above)
         shutil.copy2(os.path.join(subdir_path, "drums.wav"), subdir_dest_path)
+        shutil.copy2(os.path.join(subdir_path, "piano.wav"), subdir_dest_path)
         shutil.copy2(os.path.join(subdir_path, "bass.wav"), subdir_dest_path)
 
 
@@ -72,13 +74,12 @@ def write_instrument_csv(dirs, output_file):
 silence = np.zeros((44100 * 100, 2))
 os.makedirs("dataset/silence", exist_ok=True)
 sf.write("dataset/silence/other.wav", silence, 44100)
-sf.write("dataset/silence/piano.wav", silence, 44100)
 
 directories_to_search = [
-    ('dataset/jazz-dataset-mss/train',['drums','bass']),
-    ('dataset/jazz-extra-dataset-mss',['drums','bass']),
-    ('dataset/jazz-extra-2-dataset-mss',['drums','bass']),
-    ('dataset/silence',['piano','other']),
+    ('dataset/jazz-dataset-mss/train',['drums','bass','piano']),
+    ('dataset/jazz-extra-dataset-mss',['drums','bass','piano']),
+    ('dataset/jazz-extra-2-dataset-mss',['drums','bass','piano']),
+    ('dataset/silence',['other']),
 ]
 output_csv = 'dataset/train/dataset.csv'
 os.makedirs("dataset/train", exist_ok=True)
