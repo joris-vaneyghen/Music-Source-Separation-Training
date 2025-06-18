@@ -75,8 +75,8 @@ augmentations:
     - 0.02
   mixup_loudness_min: 0.5
   mixup_loudness_max: 1.5
-  stereo_to_mono: 0.1 # probability to change a stem from stereo to mono (identical left and right channel)
   all:
+    stereo_to_mono: 0.1 # probability to change a stem from stereo to mono (identical left and right channel)
     channel_shuffle: 0.5 # Set 0 or lower to disable
     random_polarity: 0.5 # polarity change (multiply waveform to -1)
 
