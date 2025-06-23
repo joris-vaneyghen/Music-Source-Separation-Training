@@ -208,7 +208,11 @@ def train_model(args: argparse.Namespace) -> None:
         train_one_epoch(model, config, args, optimizer, device, device_ids, epoch,
                         use_amp, scaler, gradient_accumulation_steps, train_loader, multi_loss)
         save_last_weights(args, model, device_ids)
+        if args.empty_cache:
+            torch.cuda.empty_cache()
         best_metric = compute_epoch_metrics(model, args, config, device, device_ids, best_metric, epoch, scheduler)
+        if args.empty_cache:
+            torch.cuda.empty_cache()
 
 
 if __name__ == "__main__":

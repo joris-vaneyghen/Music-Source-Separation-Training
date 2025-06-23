@@ -68,6 +68,8 @@ def parse_args_train(dict_args: Union[Dict, None]) -> argparse.Namespace:
                         help="Naming checkpoints consist only of vocal metric")
     parser.add_argument("--more_metrics_wandb", action='store_true',
                         help="Show metric_for_scheduler for all instuments")
+    parser.add_argument("--empty_cache", action='store_true',
+                        help="Empty GPU cache before and after validation")
 
     if dict_args is not None:
         args = parser.parse_args([])
