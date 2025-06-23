@@ -177,6 +177,9 @@ def train_model(args: argparse.Namespace) -> None:
         else:
             valid(model, args, config, device, verbose=True)
 
+        if args.empty_cache:
+            torch.cuda.empty_cache()
+
     optimizer = get_optimizer(config, model)
     gradient_accumulation_steps = int(getattr(config.training, 'gradient_accumulation_steps', 1))
 
