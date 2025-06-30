@@ -17,7 +17,7 @@ import loralib as lora
 from utils.audio_utils import prepare_data
 from utils.settings import parse_args_train, initialize_environment, wandb_init, get_model_from_config
 from utils.model_utils import bind_lora_to_model, load_start_checkpoint, save_weights, normalize_batch, \
-    initialize_model_and_device, get_optimizer, save_last_weights
+    initialize_model_and_device, get_optimizer, save_last_weights, save_last_optimizer_state
 
 from utils.losses import choice_loss
 from valid import valid_multi_gpu, valid
@@ -211,6 +211,7 @@ def train_model(args: argparse.Namespace) -> None:
         train_one_epoch(model, config, args, optimizer, device, device_ids, epoch,
                         use_amp, scaler, gradient_accumulation_steps, train_loader, multi_loss)
         save_last_weights(args, model, device_ids)
+        save_last_optimizer_state(args, epoch, optimizer, scheduler)
         if args.empty_cache:
             torch.cuda.empty_cache()
         best_metric = compute_epoch_metrics(model, args, config, device, device_ids, best_metric, epoch, scheduler)
