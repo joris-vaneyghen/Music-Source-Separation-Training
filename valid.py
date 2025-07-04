@@ -413,7 +413,7 @@ def validate_in_subprocess(
 
     # Initialize metrics dictionary
     all_metrics = {
-        metric: {instr: [] for instr in config.training.instruments}
+        metric: {instr: [] for instr in config.model.sources}
         for metric in args.metrics
     }
 
@@ -423,7 +423,7 @@ def validate_in_subprocess(
             break
         single_metrics = process_audio_files([path], m1, args, config, device, False, False)
         pbar_dict = {}
-        for instr in config.training.instruments:
+        for instr in config.model.sources:
             for metric_name in all_metrics:
                 all_metrics[metric_name][instr] += single_metrics[metric_name][instr]
                 if len(single_metrics[metric_name][instr]) > 0:
@@ -549,7 +549,7 @@ def valid_multi_gpu(
     all_metrics = dict()
     for metric in args.metrics:
         all_metrics[metric] = dict()
-        for instr in config.training.instruments:
+        for instr in config.model.sources:
             all_metrics[metric][instr] = []
             for i in range(len(device_ids)):
                 all_metrics[metric][instr] += return_dict[i][metric][instr]
@@ -571,7 +571,7 @@ def check_validation(dict_args):
     if args.start_check_point:
         load_start_checkpoint(args, model, type_='valid')
 
-    print(f"Instruments: {config.training.instruments}")
+    print(f"Instruments: {config.model.sources}")
 
     device_ids = args.device_ids
     if torch.cuda.is_available():
