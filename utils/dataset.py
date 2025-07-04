@@ -672,13 +672,14 @@ class MSSDataset(torch.utils.data.Dataset):
 
         mix = res.sum(0)
         if self.left_channel or self.right_channel:
+            # double sources but then as mono: stereo audio per source ->  2 x mono audio per source
             nb_mono_sources = res.shape[0] * res.shape[1]
-            res = res.contiguous().view(nb_mono_sources, -1)
-            # Remove rows where all elements are zero
-            # Create a mask of non-empty rows (rows that aren't all zeros)
-            non_empty_mask = ~torch.all(res == 0, dim=1)
-            # Apply the mask to get the final tensor
-            res = res[non_empty_mask].clone()
+            res = res.view(nb_mono_sources, -1)
+            # Create a mask of mono audio to keep (if source is hard panned only keep one mono track)
+            mask = [[False if instr in self.right_channel else True, False if instr in self.left_channel else True] for instr in
+                    self.instruments]
+            mask = torch.tensor(mask).reshape(-1)
+            res = res[mask]
             res = torch.unsqueeze(res, 1)
 
         if self.aug:
