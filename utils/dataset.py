@@ -673,12 +673,12 @@ class MSSDataset(torch.utils.data.Dataset):
         mix = res.sum(0)
         if self.left_channel or self.right_channel:
             nb_mono_sources = res.shape[0] * res.shape[1]
-            res = res.view(nb_mono_sources, -1)
+            res = res.contiguous().view(nb_mono_sources, -1)
             # Remove rows where all elements are zero
             # Create a mask of non-empty rows (rows that aren't all zeros)
             non_empty_mask = ~torch.all(res == 0, dim=1)
             # Apply the mask to get the final tensor
-            res = res[non_empty_mask]
+            res = res[non_empty_mask].clone()
             res = torch.unsqueeze(res, 1)
 
         if self.aug:
