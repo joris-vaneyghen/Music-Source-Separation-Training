@@ -76,7 +76,15 @@ class MSSDataset(torch.utils.data.Dataset):
         self.config = config
         self.dataset_type = dataset_type # 1, 2, 3 or 4
         self.data_path = data_path
-        self.instruments = instruments = config.training.instruments
+        self.instruments = config.training.instruments
+        if 'left_channel' in config.training:
+            self.left_channel = config.training.left_channel
+        else:
+            self.left_channel = []
+        if 'right_channel' in config.training:
+            self.right_channel = config.training.right_channel
+        else:
+            self.right_channel = []
         if batch_size is None:
             batch_size = config.training.batch_size
         self.batch_size = batch_size
@@ -275,6 +283,14 @@ class MSSDataset(torch.utils.data.Dataset):
                 break
         if self.aug:
             source = self.augm_data(source, instr)
+        if instr in self.left_channel:
+            remix_ratio = random.uniform(0.0, 1.0)
+            source[0] = source[0] * remix_ratio + source[1] * (1.0 - remix_ratio)
+            source[1] = 0
+        if instr in self.right_channel:
+            remix_ratio = random.uniform(0.0, 1.0)
+            source[1] = source[0] * remix_ratio + source[1] * (1.0 - remix_ratio)
+            source[0] = 0
         return torch.tensor(source, dtype=torch.float32)
 
     def load_random_mix(self):
@@ -655,6 +671,15 @@ class MSSDataset(torch.utils.data.Dataset):
                     res *= loud_values[:, None, None]
 
         mix = res.sum(0)
+        if self.left_channel or self.right_channel:
+            nb_mono_sources = res.shape[0] * res.shape[1]
+            res = res.view(nb_mono_sources, -1)
+            # Remove rows where all elements are zero
+            # Create a mask of non-empty rows (rows that aren't all zeros)
+            non_empty_mask = ~torch.all(res == 0, dim=1)
+            # Apply the mask to get the final tensor
+            res = res[non_empty_mask]
+            res = torch.unsqueeze(res, 1)
 
         if self.aug:
             if 'mp3_compression_on_mixture' in self.config['augmentations']:

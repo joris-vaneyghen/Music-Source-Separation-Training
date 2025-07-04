@@ -84,7 +84,10 @@ def demix(
     with torch.cuda.amp.autocast(enabled=use_amp):
         with torch.inference_mode():
             # Initialize result and counter tensors
-            req_shape = (num_instruments,) + mix.shape
+            if 'audio_channels_out' in config.model:
+                req_shape = (num_instruments, config.model.audio_channels_out, mix.shape[-1])
+            else:
+                req_shape = (num_instruments,) + mix.shape
             result = torch.zeros(req_shape, dtype=torch.float32)
             counter = torch.zeros(req_shape, dtype=torch.float32)
 
@@ -363,7 +366,7 @@ def prefer_target_instrument(config: ConfigDict) -> List[str]:
     if getattr(config.training, 'target_instrument', None):
         return [config.training.target_instrument]
     else:
-        return config.training.instruments
+        return config.model.sources
 
 
 def load_not_compatible_weights(model: torch.nn.Module, weights: str, verbose: bool = False) -> None:

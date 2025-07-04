@@ -154,7 +154,7 @@ def process_audio_files(
 
     # Initialize metrics dictionary
     all_metrics = {
-        metric: {instr: [] for instr in config.training.instruments}
+        metric: {instr: [] for instr in config.model.sources}
         for metric in args.metrics
     }
 

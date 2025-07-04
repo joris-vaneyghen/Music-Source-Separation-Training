@@ -253,6 +253,7 @@ class SCNet(nn.Module):
     def __init__(self,
                  sources=['drums', 'bass', 'other', 'vocals'],
                  audio_channels=2,
+                 audio_channels_out=2,
                  # Main structure
                  dims=[4, 32, 64, 128],  # dims = [4, 64, 128, 256] in SCNet-large
                  # STFT
@@ -275,6 +276,7 @@ class SCNet(nn.Module):
         super().__init__()
         self.sources = sources
         self.audio_channels = audio_channels
+        self.audio_channels_out = audio_channels_out
         self.dims = dims
         band_keys = ['low', 'mid', 'high']
         self.band_configs = {band_keys[i]: {'SR': band_SR[i], 'stride': band_stride[i], 'kernel': band_kernel[i]} for i
@@ -310,7 +312,7 @@ class SCNet(nn.Module):
                 FusionLayer(channels=dims[index + 1]),
                 SUlayer(
                     channels_in=dims[index + 1],
-                    channels_out=dims[index] if index != 0 else dims[index] * len(sources),
+                    channels_out=dims[index] if index != 0 else 2 * self.audio_channels_out * len(sources),
                     band_configs=self.band_configs,
                 )
             )
@@ -366,7 +368,7 @@ class SCNet(nn.Module):
         x = x.reshape(-1, 2, Fr, T).permute(0, 2, 3, 1)
         x = torch.view_as_complex(x.contiguous())
         x = torch.istft(x, **self.stft_config)
-        x = x.reshape(B, len(self.sources), self.audio_channels, -1)
+        x = x.reshape(B, len(self.sources), self.audio_channels_out, -1)
 
         x = x[:, :, :, :-padding]
 
