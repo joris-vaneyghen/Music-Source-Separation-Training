@@ -366,7 +366,7 @@ def prefer_target_instrument(config: ConfigDict) -> List[str]:
     if getattr(config.training, 'target_instrument', None):
         return [config.training.target_instrument]
     else:
-        return config.model.sources
+        return config.model.sources if 'sources' in config.model else config.training.instruments
 
 
 def load_not_compatible_weights(model: torch.nn.Module, weights: str, verbose: bool = False) -> None:
