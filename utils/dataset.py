@@ -287,10 +287,16 @@ class MSSDataset(torch.utils.data.Dataset):
             remix_ratio = random.uniform(0.0, 1.0)
             source[0] = source[0] * remix_ratio + source[1] * (1.0 - remix_ratio)
             source[1] = 0
+            if 'leakage_prob' in self.config.augmentations and random.uniform(0, 1) < self.config.augmentations.leakage_prob:
+                leakage_loudness = random.uniform(0.0, 1.0) * self.config.augmentations.max_leakage_loudness
+                source[1] = (source[0] * (1.0 - remix_ratio) + source[1] * remix_ratio) * leakage_loudness
         if instr in self.right_channel:
             remix_ratio = random.uniform(0.0, 1.0)
             source[1] = source[0] * remix_ratio + source[1] * (1.0 - remix_ratio)
             source[0] = 0
+            if 'leakage_prob' in self.config.augmentations and random.uniform(0, 1) < self.config.augmentations.leakage_prob:
+                leakage_loudness = random.uniform(0.0, 1.0) * self.config.augmentations.max_leakage_loudness
+                source[0] = (source[0] * (1.0 - remix_ratio) + source[1] * remix_ratio) * leakage_loudness
         return torch.tensor(source, dtype=torch.float32)
 
     def load_random_mix(self):
@@ -697,6 +703,19 @@ class MSSDataset(torch.utils.data.Dataset):
                 if mix.shape != required_shape:
                     mix = mix[..., :required_shape[-1]]
                 mix = torch.tensor(mix, dtype=torch.float32)
+
+            if 'gaussian_noise_on_mixture_prob' in self.config['augmentations']:
+                prob = self.config['augmentations']['gaussian_noise_on_mixture_prob']
+                min_amplitude = self.config['augmentations']['gaussian_noise_on_mixture_min_amplitude']
+                max_amplitude = self.config['augmentations']['gaussian_noise_on_mixture_max_amplitude']
+                if random.uniform(0, 1) < prob:
+                    apply_aug = AU.AddGaussianNoise(
+                        min_amplitude=min_amplitude,
+                        max_amplitude=max_amplitude,
+                        p=1.0
+                    )
+                    mix[0] = apply_aug(samples=mix[0], sample_rate=44100)
+                    mix[1] = apply_aug(samples=mix[1], sample_rate=44100)
 
         # If we need to optimize only given stem
         if self.config.training.target_instrument is not None:
