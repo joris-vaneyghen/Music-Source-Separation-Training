@@ -79,6 +79,11 @@ augmentations:
     - 0.02
   mixup_loudness_min: 0.5
   mixup_loudness_max: 1.5
+  leakage_prob: 0.5
+  max_leakage_loudness: 0.2
+  gaussian_noise_on_mixture_prob: 0.1
+  gaussian_noise_on_mixture_min_amplitude: 0.001
+  gaussian_noise_on_mixture_max_amplitude: 0.015
 
   all:
     stereo_to_mono: 0.1 # probability to change a stem from stereo to mono (identical left and right channel)
