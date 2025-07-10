@@ -43,7 +43,7 @@ model:
   expand: 1
 
 training:
-  batch_size: 5
+  batch_size: 4
   gradient_accumulation_steps: 1
   grad_clip: 0
   instruments:
@@ -54,7 +54,7 @@ training:
     - bass
   right_channel:
     - piano
-  lr: 5.0e-05
+  lr: 1.0e-04
   patience: 2
   reduce_factor: 0.95
   target_instrument: null
