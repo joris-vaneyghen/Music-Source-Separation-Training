@@ -452,10 +452,14 @@ def load_lora_weights(model: torch.nn.Module, lora_path: str, device: str = 'cpu
     lora_state_dict = torch.load(lora_path, map_location=device)
     model.load_state_dict(lora_state_dict, strict=False)
 
-def load_optimizer_state(args: argparse.Namespace, optimizer: torch.optim.Optimizer, scheduler ) -> (int, float):
+def load_optimizer_state(args: argparse.Namespace, optimizer: torch.optim.Optimizer, scheduler, device ) -> (int, float):
     state = torch.load(args.optimizer_state)
     if 'optimizer' in state:
         optimizer.load_state_dict(state['optimizer'])
+        for state in optimizer.state.values():
+            for k, v in state.items():
+                if isinstance(v, torch.Tensor):
+                    state[k] = v.to(device)
     if 'scheduler' in state:
         scheduler.load_state_dict(state['scheduler'])
     epoch = state['epoch'] if 'epoch' in state else 0

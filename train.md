@@ -40,15 +40,19 @@ kaggle datasets download -d jorisvaneyghen/jazz-dataset-mss
 kaggle datasets download -d jorisvaneyghen/jazz-extra-dataset-mss
 kaggle datasets download -d jorisvaneyghen/jazz-extra-2-dataset-mss
 
-unzip -d dataset jazz-dataset-mss.zip
-unzip -d dataset jazz-extra-dataset-mss.zip
-unzip -d dataset jazz-extra-2-dataset-mss.zip
+unzip -d dataset/jazz-dataset-mss jazz-dataset-mss.zip
+unzip -d dataset/jazz-extra-dataset-mss jazz-extra-dataset-mss.zip
+unzip -d dataset/jazz-extra-2-dataset-mss jazz-extra-2-dataset-mss.zip
 
 rm *.zip
 
 # Prepare data
 
 python scripts/prepare_data_jazz_drums_piano_mono.py
+
+or 
+
+python scripts/prepare_data_jazz_drums_bass_mono.py
 
 # Train
 
