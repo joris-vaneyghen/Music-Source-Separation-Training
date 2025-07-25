@@ -192,7 +192,8 @@ def train_model(args: argparse.Namespace) -> None:
     best_metric = float('-inf')
 
     if args.optimizer_state:
-        epoch, best_metric = load_optimizer_state(args, optimizer, scheduler)
+        epoch, best_metric = load_optimizer_state(args, optimizer, scheduler, device)
+
 
     print(
         f"Instruments: {config.training.instruments}\n"
