@@ -70,6 +70,7 @@ def parse_args_train(dict_args: Union[Dict, None]) -> argparse.Namespace:
                         help="Show metric_for_scheduler for all instuments")
     parser.add_argument("--empty_cache", action='store_true',
                         help="Empty GPU cache before and after validation")
+    parser.add_argument("--optimizer_state", type=str, default='', help="continue from last saved optimizer state")
 
     if dict_args is not None:
         args = parser.parse_args([])
@@ -102,7 +103,6 @@ def parse_args_valid(dict_args: Union[Dict, None]) -> argparse.Namespace:
     parser.add_argument("--config_path", type=str, help="Path to config file")
     parser.add_argument("--start_check_point", type=str, default='', help="Initial checkpoint"
                                                                           " to valid weights")
-    parser.add_argument("--optimizer_state", type=str, default='', help="continue from last saved optimizer state")
     parser.add_argument("--valid_path", nargs="+", type=str, help="Validate path")
     parser.add_argument("--store_dir", type=str, default="", help="Path to store results as wav file")
     parser.add_argument("--draw_spectro", type=float, default=0,
