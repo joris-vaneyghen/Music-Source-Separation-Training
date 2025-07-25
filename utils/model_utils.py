@@ -5,6 +5,7 @@ import argparse
 import numpy as np
 import torch
 import torch.nn as nn
+import wandb
 from ml_collections import ConfigDict
 from torch.optim import Adam, AdamW, SGD, RAdam, RMSprop
 from tqdm.auto import tqdm
@@ -451,6 +452,15 @@ def load_lora_weights(model: torch.nn.Module, lora_path: str, device: str = 'cpu
     lora_state_dict = torch.load(lora_path, map_location=device)
     model.load_state_dict(lora_state_dict, strict=False)
 
+def load_optimizer_state(args: argparse.Namespace, optimizer: torch.optim.Optimizer, scheduler ) -> (int, float):
+    state = torch.load(args.optimizer_state)
+    if 'optimizer' in state:
+        optimizer.load_state_dict(state['optimizer'])
+    if 'scheduler' in state:
+        scheduler.load_state_dict(state['scheduler'])
+    epoch = state['epoch'] if 'epoch' in state else 0
+    best_metric = state['best_metric'] if 'best_metric' in state else float('-inf')
+    return epoch, best_metric
 
 def load_start_checkpoint(args: argparse.Namespace, model: torch.nn.Module, type_='train') -> None:
     """
@@ -574,6 +584,14 @@ def save_last_weights(args: argparse.Namespace, model: torch.nn.Module, device_i
     train_lora = args.train_lora
     save_weights(store_path, model, device_ids, train_lora)
 
-def save_last_optimizer_state(args: argparse.Namespace, epoch, optimizer, scheduler) -> None:
+def save_last_optimizer_state(args: argparse.Namespace, epoch, optimizer, scheduler, best_metric) -> None:
     store_path = f'{args.results_path}/last_optimizer_state.ckpt'
-    torch.save({'epoch': epoch, 'optimizer': optimizer.state_dict(), 'scheduler': scheduler.state_dict()}, store_path)
+    state_dict = {'epoch': epoch,
+                'optimizer': optimizer.state_dict(),
+                'scheduler': scheduler.state_dict(),
+                'best_metric': best_metric,
+                }
+    if wandb.run:
+        state_dict['wandb_run_id'] = wandb.run.id
+
+    torch.save(state_dict, store_path)

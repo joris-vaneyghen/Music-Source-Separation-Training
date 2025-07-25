@@ -102,6 +102,7 @@ def parse_args_valid(dict_args: Union[Dict, None]) -> argparse.Namespace:
     parser.add_argument("--config_path", type=str, help="Path to config file")
     parser.add_argument("--start_check_point", type=str, default='', help="Initial checkpoint"
                                                                           " to valid weights")
+    parser.add_argument("--optimizer_state", type=str, default='', help="continue from last saved optimizer state")
     parser.add_argument("--valid_path", nargs="+", type=str, help="Validate path")
     parser.add_argument("--store_dir", type=str, default="", help="Path to store results as wav file")
     parser.add_argument("--draw_spectro", type=float, default=0,
@@ -355,12 +356,26 @@ def wandb_init(args: argparse.Namespace, config: Dict, device_ids: List[int], ba
     if args.wandb_key is None or args.wandb_key.strip() == '':
         wandb.init(mode='disabled')
     else:
+        if args.optimizer_state:
+            state = torch.load(args.optimizer_state)
+            wandb_run_id = state['wandb_run_id'] if 'wandb_run_id' in state else None
+        else:
+            wandb_run_id = None
+
         wandb.login(key=args.wandb_key)
-        wandb.init(
-            project='msst',
-            name=gen_wandb_name(args, config),
-            config={'config': config, 'args': args, 'device_ids': device_ids, 'batch_size': batch_size }
-        )
+        if wandb_run_id:
+            wandb.init(
+                project='msst',
+                id=wandb_run_id,
+                resume="must",
+                # config={'config': config, 'args': args, 'device_ids': device_ids, 'batch_size': batch_size}
+            )
+        else:
+            wandb.init(
+                project='msst',
+                name=gen_wandb_name(args, config),
+                config={'config': config, 'args': args, 'device_ids': device_ids, 'batch_size': batch_size }
+            )
 
 def logging(logs: List[str], text: str, verbose_logging: bool = False) -> None:
     """
