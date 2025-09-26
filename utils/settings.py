@@ -15,6 +15,7 @@ from torch.optim import Adam, AdamW, SGD, RAdam, RMSprop
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 from utils.dataset import MSSDataset
+from torch.serialization import safe_globals
 
 
 def parse_args_train(dict_args: Union[Dict, None]) -> argparse.Namespace:
@@ -357,7 +358,8 @@ def wandb_init(args: argparse.Namespace, config: Dict, device_ids: List[int], ba
         wandb.init(mode='disabled')
     else:
         if args.optimizer_state:
-            state = torch.load(args.optimizer_state)
+            with safe_globals([np._core.multiarray.scalar]):
+                state = torch.load(args.optimizer_state, weights_only=False)
             wandb_run_id = state['wandb_run_id'] if 'wandb_run_id' in state else None
         else:
             wandb_run_id = None
