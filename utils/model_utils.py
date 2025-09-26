@@ -11,6 +11,7 @@ from torch.optim import Adam, AdamW, SGD, RAdam, RMSprop
 from tqdm.auto import tqdm
 from typing import Dict, List, Tuple, Any, Union
 import loralib as lora
+from torch.serialization import safe_globals
 
 
 def demix(
@@ -453,7 +454,8 @@ def load_lora_weights(model: torch.nn.Module, lora_path: str, device: str = 'cpu
     model.load_state_dict(lora_state_dict, strict=False)
 
 def load_optimizer_state(args: argparse.Namespace, optimizer: torch.optim.Optimizer, scheduler, device ) -> (int, float):
-    state = torch.load(args.optimizer_state, weights_only=False)
+    with safe_globals([np._core.multiarray.scalar]):
+        state = torch.load(args.optimizer_state, weights_only=False)
     if 'optimizer' in state:
         optimizer.load_state_dict(state['optimizer'])
         for state in optimizer.state.values():
