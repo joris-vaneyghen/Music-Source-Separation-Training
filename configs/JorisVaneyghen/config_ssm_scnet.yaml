@@ -49,7 +49,7 @@ training:
     - drums
     - bass_guitar_strings
     - keys
-    - vocals
+    - wind_vocals
   lr: 1.0e-04
 
   patience: 2
