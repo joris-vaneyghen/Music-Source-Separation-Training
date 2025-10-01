@@ -9,6 +9,15 @@ import soundfile as sf
 from torch.utils.data import DataLoader
 
 from utils.dataset import MSSDataset
+from functools import partial
+
+
+def worker_init_fn(worker_id, base_seed):
+    # Set different seeds for each worker
+    worker_seed = base_seed % 2 ** 32 + worker_id
+    np.random.seed(worker_seed)
+    random.seed(worker_seed)
+    print(f"worker_init_fn called for worker {worker_id} with seed {worker_seed}")
 
 
 def prepare_data(config: Dict, args: argparse.Namespace, batch_size: int) -> DataLoader:
@@ -32,12 +41,7 @@ def prepare_data(config: Dict, args: argparse.Namespace, batch_size: int) -> Dat
         dataset_type=args.dataset_type,
     )
 
-    def worker_init_fn(worker_id):
-        # Set different seeds for each worker
-        worker_seed = args.seed % 2 ** 32 + worker_id
-        np.random.seed(worker_seed)
-        random.seed(worker_seed)
-        print(f"worker_init_fn called for worker {worker_id} with seed {worker_seed}")
+    worker_init = partial(worker_init_fn, base_seed=args.seed)
 
     train_loader = DataLoader(
         trainset,
@@ -45,7 +49,7 @@ def prepare_data(config: Dict, args: argparse.Namespace, batch_size: int) -> Dat
         shuffle=True,
         num_workers=args.num_workers,
         pin_memory=args.pin_memory,
-        worker_init_fn=worker_init_fn
+        worker_init_fn=worker_init
     )
     return train_loader
 
