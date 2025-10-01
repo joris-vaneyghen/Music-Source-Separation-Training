@@ -9,7 +9,7 @@ def write_csv(dirs, output_file, allowed_instruments=None):
 
     with open(output_file, 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
-        writer.writerow(['instrument', 'path'])
+        writer.writerow(['instrum', 'path'])
 
         for instrument, path, duration_ms in find_audio_files(dirs, allowed_instruments):
             writer.writerow([instrument, path])
