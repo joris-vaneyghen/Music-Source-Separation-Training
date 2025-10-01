@@ -1,11 +1,14 @@
 import argparse
-import numpy as np
 import os
-import soundfile as sf
-import matplotlib.pyplot as plt
+import random
 from typing import Dict, Tuple
-from utils.dataset import MSSDataset
+
+import matplotlib.pyplot as plt
+import numpy as np
+import soundfile as sf
 from torch.utils.data import DataLoader
+
+from utils.dataset import MSSDataset
 
 
 def prepare_data(config: Dict, args: argparse.Namespace, batch_size: int) -> DataLoader:
@@ -29,12 +32,20 @@ def prepare_data(config: Dict, args: argparse.Namespace, batch_size: int) -> Dat
         dataset_type=args.dataset_type,
     )
 
+    def worker_init_fn(worker_id):
+        # Set different seeds for each worker
+        worker_seed = args.seed % 2 ** 32 + worker_id
+        np.random.seed(worker_seed)
+        random.seed(worker_seed)
+        print(f"worker_init_fn called for worker {worker_id} with seed {worker_seed}")
+
     train_loader = DataLoader(
         trainset,
         batch_size=batch_size,
         shuffle=True,
         num_workers=args.num_workers,
-        pin_memory=args.pin_memory
+        pin_memory=args.pin_memory,
+        worker_init_fn=worker_init_fn
     )
     return train_loader
 
