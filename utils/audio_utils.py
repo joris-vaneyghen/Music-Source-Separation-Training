@@ -6,6 +6,7 @@ from typing import Dict, Tuple
 import matplotlib.pyplot as plt
 import numpy as np
 import soundfile as sf
+import torch
 from torch.utils.data import DataLoader
 
 from utils.dataset import MSSDataset
@@ -14,10 +15,11 @@ from functools import partial
 
 def worker_init_fn(worker_id, base_seed):
     # Set different seeds for each worker
-    worker_seed = base_seed % 2 ** 32 + worker_id
+    # worker_seed = base_seed % 2 ** 32 + worker_id
+    worker_seed = torch.initial_seed() % 2 ** 32 + worker_id
     np.random.seed(worker_seed)
     random.seed(worker_seed)
-    print(f"worker_init_fn called for worker {worker_id} with seed {worker_seed}")
+    print(f"worker_init_fn called for worker {worker_id} with seed {worker_seed}", flush=True)
 
 
 def prepare_data(config: Dict, args: argparse.Namespace, batch_size: int) -> DataLoader:
