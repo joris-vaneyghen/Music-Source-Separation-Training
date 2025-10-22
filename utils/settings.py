@@ -11,7 +11,7 @@ from omegaconf import OmegaConf
 from ml_collections import ConfigDict
 import torch.distributed as dist
 import loralib as lora
-from torch.optim import Adam, AdamW, SGD, RAdam, RMSprop
+from torch.optim import Adam, AdamW, SGD, RAdam, RMSprop, Adafactor
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 from utils.dataset import MSSDataset
@@ -530,6 +530,8 @@ def get_optimizer_ddp(config: ConfigDict, model: torch.nn.Module) -> torch.optim
         optimizer = AdamW(model.parameters(), lr=config.training.lr, **optim_params)
     elif name_optimizer == 'radam':
         optimizer = RAdam(model.parameters(), lr=config.training.lr, **optim_params)
+    elif name_optimizer == 'adafactor':
+        optimizer = Adafactor(model.parameters(), lr=config.training.lr, **optim_params)
     elif name_optimizer == 'rmsprop':
         optimizer = RMSprop(model.parameters(), lr=config.training.lr, **optim_params)
     elif name_optimizer == 'prodigy':
