@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 import wandb
 from ml_collections import ConfigDict
-from torch.optim import Adam, AdamW, SGD, RAdam, RMSprop
+from torch.optim import Adam, AdamW, SGD, RAdam, RMSprop, Adafactor
 from tqdm.auto import tqdm
 from typing import Dict, List, Tuple, Any, Union
 import loralib as lora
@@ -221,6 +221,8 @@ def get_optimizer(config: ConfigDict, model: torch.nn.Module) -> torch.optim.Opt
         optimizer = AdamW(model.parameters(), lr=config.training.lr, **optim_params)
     elif name_optimizer == 'radam':
         optimizer = RAdam(model.parameters(), lr=config.training.lr, **optim_params)
+    elif name_optimizer == 'adafactor':
+        optimizer = Adafactor(model.parameters(), lr=config.training.lr, **optim_params)
     elif name_optimizer == 'rmsprop':
         optimizer = RMSprop(model.parameters(), lr=config.training.lr, **optim_params)
     elif name_optimizer == 'prodigy':
