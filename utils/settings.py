@@ -45,7 +45,7 @@ def parse_args_train(dict_args: Union[Dict, None]) -> argparse.Namespace:
     parser.add_argument("--seed", type=int, default=0, help="random seed")
     parser.add_argument("--device_ids", nargs='+', type=int, default=[0], help='list of gpu ids')
     parser.add_argument("--loss", type=str, nargs='+', choices=['masked_loss', 'mse_loss', 'l1_loss',
-                        'multistft_loss', 'spec_masked_loss', 'spec_rmse_loss_coef', 'log_wmse_loss'],
+                        'multistft_loss', 'spec_masked_loss', 'spec_rmse_loss', 'log_wmse_loss'],
                         default=['masked_loss'], help="List of loss functions to use")
     parser.add_argument("--masked_loss_coef", type=float, default=1., help="Coef for loss")
     parser.add_argument("--mse_loss_coef", type=float, default=1., help="Coef for loss")
