@@ -190,9 +190,10 @@ def train_model(args: argparse.Namespace) -> None:
     multi_loss = choice_loss(args, config)
     scaler = GradScaler()
     best_metric = float('-inf')
+    start_epoch = 0
 
     if args.optimizer_state:
-        epoch, best_metric = load_optimizer_state(args, optimizer, scheduler, device)
+        start_epoch, best_metric = load_optimizer_state(args, optimizer, scheduler, device)
 
 
     print(
@@ -210,7 +211,7 @@ def train_model(args: argparse.Namespace) -> None:
 
     print(f'Train for: {config.training.num_epochs} epochs')
 
-    for epoch in range(config.training.num_epochs):
+    for epoch in range(start_epoch, config.training.num_epochs):
 
         train_one_epoch(model, config, args, optimizer, device, device_ids, epoch,
                         use_amp, scaler, gradient_accumulation_steps, train_loader, multi_loss)
