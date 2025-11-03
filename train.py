@@ -155,6 +155,8 @@ def train_model(args: argparse.Namespace) -> None:
     initialize_environment(args.seed, args.results_path)
     model, config = get_model_from_config(args.model_type, args.config_path)
     use_amp = getattr(config.training, 'use_amp', True)
+    compile = getattr(config.training, 'compile', False)
+    memory_budget = getattr(config.training, 'memory_budget', 1.0)
     device_ids = args.device_ids
     batch_size = config.training.batch_size * len(device_ids)
 
@@ -170,6 +172,15 @@ def train_model(args: argparse.Namespace) -> None:
         lora.mark_only_lora_as_trainable(model)
 
     device, model = initialize_model_and_device(model, args.device_ids)
+
+    if compile:
+        if memory_budget < 1.0:
+            # Set memory budget
+            _ = torch._dynamo  # Force initialization by accessing dynamo first
+            torch._functorch.config.activation_memory_budget = args.memory_budget
+            torch._functorch.config.activation_memory_budget_solver = "ilp"
+            # torch._functorch.config.activation_memory_budget_runtime_estimator = "profile"
+        model = torch.compile(model)
 
     if args.pre_valid:
         if torch.cuda.is_available() and len(device_ids) > 1:
