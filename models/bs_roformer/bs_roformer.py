@@ -432,7 +432,7 @@ class BSRoformer(Module):
 
             self.ac_context_fn = functools.partial(create_selective_checkpoint_contexts, policy_fn)
         else:
-            self.ac_context_fn = noop_context_fn
+            self.ac_context_fn = None
 
         self.skip_connection = skip_connection
 
@@ -568,7 +568,10 @@ class BSRoformer(Module):
         x = rearrange(stft_repr, 'b f t c -> b t (f c)')
 
         if self.use_torch_checkpoint:
-            x = checkpoint(self.band_split, x, use_reentrant=False, context_fn=self.ac_context_fn)
+            if self.ac_context_fn:
+                x = checkpoint(self.band_split, x, use_reentrant=False, context_fn=self.ac_context_fn)
+            else:
+                x = checkpoint(self.band_split, x, use_reentrant=False)
         else:
             x = self.band_split(x)
 
@@ -582,7 +585,10 @@ class BSRoformer(Module):
 
                 x, ft_ps = pack([x], 'b * d')
                 if self.use_torch_checkpoint:
-                    x = checkpoint(linear_transformer, x, use_reentrant=False, context_fn=self.ac_context_fn)
+                    if self.ac_context_fn:
+                        x = checkpoint(linear_transformer, x, use_reentrant=False, context_fn=self.ac_context_fn)
+                    else:
+                        x = checkpoint(linear_transformer, x, use_reentrant=False)
                 else:
                     x = linear_transformer(x)
                 x, = unpack(x, ft_ps, 'b * d')
@@ -598,7 +604,10 @@ class BSRoformer(Module):
             x, ps = pack([x], '* t d')
 
             if self.use_torch_checkpoint:
-                x = checkpoint(time_transformer, x, use_reentrant=False, context_fn=self.ac_context_fn)
+                if self.ac_context_fn:
+                    x = checkpoint(time_transformer, x, use_reentrant=False, context_fn=self.ac_context_fn)
+                else:
+                    x = checkpoint(time_transformer, x, use_reentrant=False)
             else:
                 x = time_transformer(x)
 
@@ -607,7 +616,10 @@ class BSRoformer(Module):
             x, ps = pack([x], '* f d')
 
             if self.use_torch_checkpoint:
-                x = checkpoint(freq_transformer, x, use_reentrant=False, context_fn=self.ac_context_fn)
+                if self.ac_context_fn:
+                    x = checkpoint(freq_transformer, x, use_reentrant=False, context_fn=self.ac_context_fn)
+                else:
+                    x = checkpoint(freq_transformer, x, use_reentrant=False)
             else:
                 x = freq_transformer(x)
 
@@ -621,7 +633,10 @@ class BSRoformer(Module):
         num_stems = len(self.mask_estimators)
 
         if self.use_torch_checkpoint:
-            mask = torch.stack([checkpoint(fn, x, use_reentrant=False, context_fn=self.ac_context_fn) for fn in self.mask_estimators], dim=1)
+            if self.ac_context_fn:
+                mask = torch.stack([checkpoint(fn, x, use_reentrant=False, context_fn=self.ac_context_fn) for fn in self.mask_estimators], dim=1)
+            else:
+                mask = torch.stack([checkpoint(fn, x, use_reentrant=False) for fn in self.mask_estimators], dim=1)
         else:
             mask = torch.stack([fn(x) for fn in self.mask_estimators], dim=1)
         mask = rearrange(mask, 'b n t (f c) -> b n f t c', c=2)
