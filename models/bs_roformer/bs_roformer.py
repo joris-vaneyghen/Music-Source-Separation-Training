@@ -1,3 +1,4 @@
+import functools
 from functools import partial
 
 import torch
@@ -10,7 +11,7 @@ try:
     from models.bs_roformer.attend_sage import Attend as AttendSage
 except:
     pass
-from torch.utils.checkpoint import checkpoint
+from torch.utils.checkpoint import checkpoint, CheckpointPolicy, create_selective_checkpoint_contexts, noop_context_fn
 
 from beartype.typing import Tuple, Optional, List, Callable
 from beartype import beartype
@@ -392,6 +393,7 @@ class BSRoformer(Module):
             use_torch_checkpoint=False,
             skip_connection=False,
             sage_attention=False,
+            checkpointing_policy = None,
     ):
         super().__init__()
 
@@ -399,6 +401,39 @@ class BSRoformer(Module):
         self.audio_channels = 2 if stereo else 1
         self.num_stems = num_stems
         self.use_torch_checkpoint = use_torch_checkpoint
+        if checkpointing_policy:
+            aten = torch.ops.aten
+            if checkpointing_policy == 1:
+                compute_intensive_ops = [
+                    aten.mm.default,
+                    aten.bmm.default,
+                    aten.addmm.default,
+                ]
+            else:
+                compute_intensive_ops = [
+                    aten.mm.default,
+                    aten.convolution.default,
+                    aten.convolution_backward.default,
+                    aten.bmm.default,
+                    aten.addmm.default,
+                    aten._scaled_dot_product_flash_attention.default,
+                    aten._scaled_dot_product_efficient_attention.default,
+                    aten._flash_attention_forward.default,
+                    aten._efficient_attention_forward.default,
+                    aten.upsample_bilinear2d.default,
+                    aten._scaled_mm.default
+                ]
+
+            def policy_fn(ctx, op, *args, **kwargs):
+                if op in compute_intensive_ops:
+                    return CheckpointPolicy.PREFER_SAVE
+                else:
+                    return CheckpointPolicy.PREFER_RECOMPUTE
+
+            self.ac_context_fn = functools.partial(create_selective_checkpoint_contexts, policy_fn)
+        else:
+            self.ac_context_fn = noop_context_fn
+
         self.skip_connection = skip_connection
 
         self.layers = ModuleList([])
@@ -533,7 +568,7 @@ class BSRoformer(Module):
         x = rearrange(stft_repr, 'b f t c -> b t (f c)')
 
         if self.use_torch_checkpoint:
-            x = checkpoint(self.band_split, x, use_reentrant=False)
+            x = checkpoint(self.band_split, x, use_reentrant=False, context_fn=self.ac_context_fn)
         else:
             x = self.band_split(x)
 
@@ -547,7 +582,7 @@ class BSRoformer(Module):
 
                 x, ft_ps = pack([x], 'b * d')
                 if self.use_torch_checkpoint:
-                    x = checkpoint(linear_transformer, x, use_reentrant=False)
+                    x = checkpoint(linear_transformer, x, use_reentrant=False, context_fn=self.ac_context_fn)
                 else:
                     x = linear_transformer(x)
                 x, = unpack(x, ft_ps, 'b * d')
@@ -563,7 +598,7 @@ class BSRoformer(Module):
             x, ps = pack([x], '* t d')
 
             if self.use_torch_checkpoint:
-                x = checkpoint(time_transformer, x, use_reentrant=False)
+                x = checkpoint(time_transformer, x, use_reentrant=False, context_fn=self.ac_context_fn)
             else:
                 x = time_transformer(x)
 
@@ -572,7 +607,7 @@ class BSRoformer(Module):
             x, ps = pack([x], '* f d')
 
             if self.use_torch_checkpoint:
-                x = checkpoint(freq_transformer, x, use_reentrant=False)
+                x = checkpoint(freq_transformer, x, use_reentrant=False, context_fn=self.ac_context_fn)
             else:
                 x = freq_transformer(x)
 
@@ -586,7 +621,7 @@ class BSRoformer(Module):
         num_stems = len(self.mask_estimators)
 
         if self.use_torch_checkpoint:
-            mask = torch.stack([checkpoint(fn, x, use_reentrant=False) for fn in self.mask_estimators], dim=1)
+            mask = torch.stack([checkpoint(fn, x, use_reentrant=False, context_fn=self.ac_context_fn) for fn in self.mask_estimators], dim=1)
         else:
             mask = torch.stack([fn(x) for fn in self.mask_estimators], dim=1)
         mask = rearrange(mask, 'b n t (f c) -> b n f t c', c=2)
