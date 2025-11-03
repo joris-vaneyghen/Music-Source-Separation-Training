@@ -177,7 +177,7 @@ def train_model(args: argparse.Namespace) -> None:
         if memory_budget < 1.0:
             # Set memory budget
             _ = torch._dynamo  # Force initialization by accessing dynamo first
-            torch._functorch.config.activation_memory_budget = args.memory_budget
+            torch._functorch.config.activation_memory_budget = memory_budget
             torch._functorch.config.activation_memory_budget_solver = "ilp"
             # torch._functorch.config.activation_memory_budget_runtime_estimator = "profile"
         model = torch.compile(model)
