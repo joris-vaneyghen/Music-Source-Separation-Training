@@ -6,11 +6,16 @@ import torch.nn as nn
 
 class AbstractModel(nn.Module):
 
-    def __init__(self, dim_f:int, dim_t:int, n_fft:int, hop_length:int, overlap:int,
-                 audio_ch:int):
+    def __init__(self,
+                 dim_f: int = 2048,
+                 dim_t: int = 384,
+                 n_fft: int = 6144,
+                 hop_length: int = 1024,
+                 overlap: int = 3072,
+                 audio_ch: int = 2):
         super().__init__()
         self.dim_c_in = audio_ch * 2
-        self.dim_c_out:int = audio_ch * 2
+        self.dim_c_out: int = audio_ch * 2
         self.dim_f = dim_f
         self.dim_t = dim_t
         self.n_fft = n_fft
