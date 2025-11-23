@@ -1,8 +1,11 @@
+import functools
+
+import torch
 import torch.nn as nn
 from einops import rearrange, pack, unpack
 from rotary_embedding_torch import RotaryEmbedding
 from torch.nn import ModuleList
-from torch.utils.checkpoint import checkpoint
+from torch.utils.checkpoint import checkpoint, CheckpointPolicy, create_selective_checkpoint_contexts
 
 from models.bs_roformer.bs_roformer import Transformer
 from models.moises_light.abstract_model import AbstractModel
@@ -36,10 +39,44 @@ class MoisesLight(AbstractModel):
                  sage_attention=False,
                  skip_connection=False,
                  use_torch_checkpoint=False,
+                 checkpointing_policy=None,
                  #STFT prams
                  **kwargs):
 
         super(MoisesLight, self).__init__(**kwargs)
+
+        if checkpointing_policy:
+            aten = torch.ops.aten
+            if checkpointing_policy == 1:
+                compute_intensive_ops = [
+                    aten.mm.default,
+                    aten.bmm.default,
+                    aten.addmm.default,
+                ]
+            else:
+                compute_intensive_ops = [
+                    aten.mm.default,
+                    aten.convolution.default,
+                    aten.convolution_backward.default,
+                    aten.bmm.default,
+                    aten.addmm.default,
+                    aten._scaled_dot_product_flash_attention.default,
+                    aten._scaled_dot_product_efficient_attention.default,
+                    aten._flash_attention_forward.default,
+                    aten._efficient_attention_forward.default,
+                    aten.upsample_bilinear2d.default,
+                    aten._scaled_mm.default
+                ]
+
+            def policy_fn(ctx, op, *args, **kwargs):
+                if op in compute_intensive_ops:
+                    return CheckpointPolicy.PREFER_SAVE
+                else:
+                    return CheckpointPolicy.PREFER_RECOMPUTE
+
+            self.ac_context_fn = functools.partial(create_selective_checkpoint_contexts, policy_fn)
+        else:
+            self.ac_context_fn = None
 
         self.n_band = n_band
         self.n_band = n_band
