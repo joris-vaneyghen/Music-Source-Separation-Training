@@ -267,8 +267,9 @@ class MoisesLight(AbstractModel):
             x = self.us[i](x)
             # print(f"us{i} in: {x.shape}")
             # print(f"ds{i} out: {ds_outputs[-i - 1].shape}")
-            x = x * ds_outputs[-i - 1]
+            # x = x * ds_outputs[-i - 1]
             # x = self.decoding_blocks[i](x)
+        x = x * ds_outputs[0]
         x = self.decoding_block(x)
 
 
