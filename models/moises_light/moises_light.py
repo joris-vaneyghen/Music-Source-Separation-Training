@@ -287,4 +287,6 @@ class MoisesLight(AbstractModel):
 
         x = self.istft(x)
 
+        x = x.unsqueeze(1)
+
         return x
