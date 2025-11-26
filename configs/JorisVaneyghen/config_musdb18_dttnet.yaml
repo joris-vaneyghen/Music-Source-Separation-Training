@@ -1,0 +1,85 @@
+audio:
+  chunk_size: 392192  # 8.9 seconds
+  dim_f: 2048 # don't work (use in model)
+  dim_t: 384 # don't work (use in model)
+  hop_length: 441 # don't work (use in model)
+  n_fft: 6144 # don't work (use in model)
+  num_channels: 2
+  sample_rate: 44100
+  min_mean_abs: 0.000
+
+model:
+  block_type: TFC_TDF_Res2
+  num_blocks: 5
+  l: 3
+  g: 32
+  k: 3
+  bn: 8
+  bias: False
+  bn_norm: BN
+  bandsequence:
+    rnn_type: LSTM
+    bidirectional: True
+    num_layers: 4
+    n_heads: 2
+  dim_f: 2048
+  dim_t: 384  # 8.9 seconds -> chunk size 392192
+  n_fft: 6144
+  hop_length: 1024
+  overlap: 3072
+  audio_ch: 2
+
+training:
+  batch_size: 4
+  gradient_accumulation_steps: 1
+  grad_clip: 0
+  instruments:
+    - drums
+    - bass
+    - other
+    - vocals
+  patience: 3
+  reduce_factor: 0.95
+  target_instrument: vocals
+  num_epochs: 1000
+  num_steps: 1000
+  augmentation: false # enable augmentations by audiomentations and pedalboard
+  augmentation_type: simple1
+  use_mp3_compress: false # Deprecated
+  augmentation_mix: true # Mix several stems of the same type with some probability
+  augmentation_loudness: true # randomly change loudness of each stem
+  augmentation_loudness_type: 1 # Type 1 or 2
+  augmentation_loudness_min: 0.5
+  augmentation_loudness_max: 1.5
+  q: 0.95
+  coarse_loss_clip: true
+  ema_momentum: 0.999
+  optimizer: adamw
+  lr: 1.0e-04
+  other_fix: false # it's needed for checking on multisong dataset if other is actually instrumental
+  use_amp: true # enable or disable usage of mixed precision (float16) - usually it must be true
+  compile: true
+  memory_budget: 1.0
+
+augmentations:
+  enable: true # enable or disable all augmentations (to fast disable if needed)
+  loudness: true # randomly change loudness of each stem on the range (loudness_min; loudness_max)
+  loudness_min: 0.5
+  loudness_max: 1.5
+  mixup: true # mix several stems of same type with some probability (only works for dataset types: 1, 2, 3)
+  mixup_probs: !!python/tuple # 2 additional stems of the same type (1st with prob 0.2, 2nd with prob 0.02)
+    - 0.2
+    - 0.02
+  mixup_loudness_min: 0.5
+  mixup_loudness_max: 1.5
+
+  all:
+    channel_shuffle: 0.5 # Set 0 or lower to disable
+    random_inverse: 0.1 # inverse track (better lower probability)
+    random_polarity: 0.5 # polarity change (multiply waveform to -1)
+
+
+inference:
+  batch_size: 4
+  dim_t: 1101
+  num_overlap: 2
