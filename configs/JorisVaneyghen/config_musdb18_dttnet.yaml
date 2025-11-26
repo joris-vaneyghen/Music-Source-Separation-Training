@@ -1,5 +1,5 @@
 audio:
-  chunk_size: 392192  # 8.9 seconds
+  chunk_size: 261120  # 5.9 seconds
   dim_f: 2048 # don't work (use in model)
   dim_t: 384 # don't work (use in model)
   hop_length: 441 # don't work (use in model)
@@ -23,7 +23,7 @@ model:
     num_layers: 4
     n_heads: 2
   dim_f: 2048
-  dim_t: 384  # 8.9 seconds -> chunk size 392192
+  dim_t: 256  # 5.9 seconds -> chunk size 261120
   n_fft: 6144
   hop_length: 1024
   overlap: 3072
