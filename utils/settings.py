@@ -300,6 +300,9 @@ def get_model_from_config(model_type: str, config_path: str) -> Tuple:
     elif model_type == 'dttnet':
         from models.dttnet import DPTDFNet
         model = DPTDFNet(**dict(config.model))
+    elif model_type == 'dttropenet':
+        from models.dttnet import DttRopeNet
+        model = DttRopeNet(**dict(config.model))
     else:
         raise ValueError(f"Unknown model type: {model_type}")
 

@@ -1,16 +1,15 @@
+import torch.nn as nn
 import functools
 
 import torch
-import torch.nn as nn
-
-from models.dttnet.bandsequence import BandSequenceModelModule
+from torch.utils.checkpoint import checkpoint, CheckpointPolicy, create_selective_checkpoint_contexts
 from models.dttnet.modules import TFC_TDF, TFC_TDF_Res1, TFC_TDF_Res2
 from models.moises_light.abstract_model import AbstractModel
 from models.moises_light.batch_norm import get_norm
-from torch.utils.checkpoint import checkpoint, CheckpointPolicy, create_selective_checkpoint_contexts
+from models.moises_light.rope import RoPETransformer
+from einops import rearrange
 
-
-class DPTDFNet(AbstractModel):
+class DttRopeNet(AbstractModel):
     def __init__(self,
                  num_blocks=5,
                  l=3,
@@ -19,18 +18,14 @@ class DPTDFNet(AbstractModel):
                  bn=8,  #botlleneck factor TDF FeedForward
                  bias=False,
                  bn_norm='BN',
-                 bandsequence=None,
                  block_type='TFC_TDF_Res2',
+                 use_torch_checkpoint=False,
                  **kwargs):
 
-        super(DPTDFNet, self).__init__(**kwargs)
+        super(DttRopeNet, self).__init__(**kwargs)
         # self.save_hyperparameters()
 
-        if bandsequence is None:
-            bandsequence = {'rnn_type': 'LSTM',
-                            'bidirectional': True,
-                            'num_layers': 4,
-                            'n_heads': 2}
+
         self.num_blocks = num_blocks
         self.l = l
         self.g = g
@@ -39,6 +34,7 @@ class DPTDFNet(AbstractModel):
         self.bias = bias
 
         self.n = num_blocks // 2
+        self.use_torch_checkpoint = use_torch_checkpoint
         scale = (2, 2)
 
         if block_type == "TFC_TDF":
@@ -76,10 +72,18 @@ class DPTDFNet(AbstractModel):
             c += g
 
         self.bottleneck_block1 = T_BLOCK(c, c, l, f, k, bn, bn_norm, bias=bias)
-        self.bottleneck_block2 = BandSequenceModelModule(
-            **bandsequence,
-            input_dim_size=c,
-            hidden_dim_size=2*c
+
+        self.bottleneck_block2 = RoPETransformer(
+            n_rope=5,
+            dim=c,
+            use_torch_checkpoint=self.use_torch_checkpoint,
+            dim_head=c//8,
+            heads=8,
+            attn_dropout=0.1,
+            ff_dropout=0.1,
+            ff_mult=4,
+            flash_attn=True,
+            sage_attention=False,
         )
 
         self.decoding_blocks = nn.ModuleList()
@@ -130,7 +134,7 @@ class DPTDFNet(AbstractModel):
 
         ds_outputs = []
         for i in range(self.n):
-            if i > 0:  # Checkpoint all but first encoder block
+            if self.use_torch_checkpoint and i > 0:  # Checkpoint all but first encoder block
                 x = checkpoint(self.encoding_blocks[i], x, use_reentrant=False, context_fn=self.ac_context_fn)
             else:
                 x = self.encoding_blocks[i](x)
@@ -138,15 +142,20 @@ class DPTDFNet(AbstractModel):
             x = self.ds[i](x)
 
         # print(f"bottleneck in: {x.shape}")
-        x = checkpoint(self.bottleneck_block1, x, use_reentrant=False, context_fn=self.ac_context_fn)
+        x = self.bottleneck_block1(x)
+
+        # Transformer
+        x = rearrange(x, 'b d t f -> b t f d')
         x = self.bottleneck_block2(x)
+        x = rearrange(x, 'b t f d -> b d t f')
+
 
         for i in range(self.n):
             x = self.us[i](x)
             # print(f"us{i} in: {x.shape}")
             # print(f"ds{i} out: {ds_outputs[-i - 1].shape}")
             x = x * ds_outputs[-i - 1]
-            if i < self.n - 1: # Checkpoint all but last decoder block
+            if self.use_torch_checkpoint and i < self.n - 1:  # Checkpoint all but last decoder block
                 x = checkpoint(self.decoding_blocks[i], x, use_reentrant=False, context_fn=self.ac_context_fn)
             else:
                 x = self.decoding_blocks[i](x)

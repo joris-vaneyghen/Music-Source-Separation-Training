@@ -1,5 +1,9 @@
+import functools
+
 import torch
 import torch.nn as nn
+from torch.utils.checkpoint import checkpoint, CheckpointPolicy, create_selective_checkpoint_contexts
+
 
 # Original code from https://github.com/amanteur/BandSplitRNN-Pytorch
 class RNNModule(nn.Module):
@@ -75,6 +79,22 @@ class BandSequenceModelModule(nn.Module):
         self.bsrnn = nn.ModuleList([])
         self.n_heads = n_heads
 
+        aten = torch.ops.aten
+        compute_intensive_ops = [
+            aten.mm.default,
+            aten.bmm.default,
+            aten.addmm.default,
+        ]
+
+        def policy_fn(ctx, op, *args, **kwargs):
+            if op in compute_intensive_ops:
+                return CheckpointPolicy.PREFER_SAVE
+            else:
+                return CheckpointPolicy.PREFER_RECOMPUTE
+
+        self.ac_context_fn = functools.partial(create_selective_checkpoint_contexts, policy_fn)
+
+
         input_dim_size = input_dim_size // n_heads
         hidden_dim_size = hidden_dim_size // n_heads
         group_num = input_dim_size // 16
@@ -104,7 +124,8 @@ class BandSequenceModelModule(nn.Module):
 
         x = x.permute(0, 3, 2, 1).contiguous()  # [b*n_heads, f, t, c//n_heads]
         for i in range(len(self.bsrnn)):
-            x = self.bsrnn[i](x)
+            x = checkpoint(self.bsrnn[i][0], x , use_reentrant=False, context_fn=self.ac_context_fn)
+            x = checkpoint(self.bsrnn[i][1], x , use_reentrant=False, context_fn=self.ac_context_fn)
 
         x = x.permute(0, 3, 2, 1).contiguous()  # [b*n_heads, c//n_heads, t, f]
         x = x.view(b, c, t, f)  # [b, c, t, f]
