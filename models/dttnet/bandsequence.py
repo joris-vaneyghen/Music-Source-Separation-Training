@@ -58,24 +58,19 @@ class RNNModule(nn.Module):
         return x
 
 
-# Define a global policy function class that can be pickled
-class SelectiveCheckpointPolicy:
-    """Policy class that can be pickled for multiprocessing."""
+def _selective_checkpoint_policy(ctx, op, *args, **kwargs):
+    """Global policy function that can be pickled."""
+    aten = torch.ops.aten
+    compute_intensive_ops = [
+        aten.mm.default,
+        aten.bmm.default,
+        aten.addmm.default,
+    ]
 
-    def __init__(self):
-        aten = torch.ops.aten
-        self.compute_intensive_ops = {
-            aten.mm.default,
-            aten.bmm.default,
-            aten.addmm.default,
-        }
-
-    def __call__(self, ctx, op, *args, **kwargs):
-        """Make the class callable like a function."""
-        if op in self.compute_intensive_ops:
-            return CheckpointPolicy.PREFER_SAVE
-        else:
-            return CheckpointPolicy.PREFER_RECOMPUTE
+    if op in compute_intensive_ops:
+        return CheckpointPolicy.PREFER_SAVE
+    else:
+        return CheckpointPolicy.PREFER_RECOMPUTE
 
 class BandSequenceModelModule(nn.Module):
     """
@@ -105,9 +100,11 @@ class BandSequenceModelModule(nn.Module):
             aten.addmm.default,
         ]
 
-        self.policy = SelectiveCheckpointPolicy()
-        self.ac_context_fn = functools.partial(create_selective_checkpoint_contexts, self.policy)
-
+        # Use the global function directly
+        self.ac_context_fn = functools.partial(
+            create_selective_checkpoint_contexts,
+            _selective_checkpoint_policy
+        )
 
         input_dim_size = input_dim_size // n_heads
         hidden_dim_size = hidden_dim_size // n_heads
