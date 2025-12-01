@@ -58,23 +58,24 @@ class RNNModule(nn.Module):
         return x
 
 
-# Define policy function at module level so it can be pickled
-def _create_selective_checkpoint_policy():
-    """Create selective checkpoint policy function at module level."""
-    aten = torch.ops.aten
-    compute_intensive_ops = [
-        aten.mm.default,
-        aten.bmm.default,
-        aten.addmm.default,
-    ]
+# Define a global policy function class that can be pickled
+class SelectiveCheckpointPolicy:
+    """Policy class that can be pickled for multiprocessing."""
 
-    def policy_fn(ctx, op, *args, **kwargs):
-        if op in compute_intensive_ops:
+    def __init__(self):
+        aten = torch.ops.aten
+        self.compute_intensive_ops = {
+            aten.mm.default,
+            aten.bmm.default,
+            aten.addmm.default,
+        }
+
+    def __call__(self, ctx, op, *args, **kwargs):
+        """Make the class callable like a function."""
+        if op in self.compute_intensive_ops:
             return CheckpointPolicy.PREFER_SAVE
         else:
             return CheckpointPolicy.PREFER_RECOMPUTE
-
-    return policy_fn
 
 class BandSequenceModelModule(nn.Module):
     """
@@ -104,7 +105,7 @@ class BandSequenceModelModule(nn.Module):
             aten.addmm.default,
         ]
 
-        self.policy_fn = _create_selective_checkpoint_policy()
+        self.policy = SelectiveCheckpointPolicy()
         self.ac_context_fn = functools.partial(create_selective_checkpoint_contexts, self.policy_fn)
 
 
