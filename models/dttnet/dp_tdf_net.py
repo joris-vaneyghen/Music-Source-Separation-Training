@@ -9,6 +9,20 @@ from models.moises_light.abstract_model import AbstractModel
 from models.moises_light.batch_norm import get_norm
 from torch.utils.checkpoint import checkpoint, CheckpointPolicy, create_selective_checkpoint_contexts
 
+# Create a global policy function - NO nested functions!
+aten = torch.ops.aten
+_COMPUTE_INTENSIVE_OPS = [
+    aten.mm.default,
+    aten.bmm.default,
+    aten.addmm.default,
+]
+
+def _global_policy_fn(ctx, op, *args, **kwargs):
+    """Global policy function with no local dependencies."""
+    if op in _COMPUTE_INTENSIVE_OPS:
+        return CheckpointPolicy.PREFER_SAVE
+    else:
+        return CheckpointPolicy.PREFER_RECOMPUTE
 
 class DPTDFNet(AbstractModel):
     def __init__(self,
@@ -116,7 +130,18 @@ class DPTDFNet(AbstractModel):
             else:
                 return CheckpointPolicy.PREFER_RECOMPUTE
 
-        self.ac_context_fn = functools.partial(create_selective_checkpoint_contexts, policy_fn)
+        # Use the global function directly
+        self._ac_context_fn = None  # Will be created lazily
+
+    @property
+    def ac_context_fn(self):
+        """Lazy property to create the context function when needed."""
+        if self._ac_context_fn is None:
+            self._ac_context_fn = functools.partial(
+                create_selective_checkpoint_contexts,
+                _global_policy_fn
+            )
+        return self._ac_context_fn
 
     def forward(self, x):
         '''
