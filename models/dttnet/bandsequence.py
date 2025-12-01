@@ -58,16 +58,17 @@ class RNNModule(nn.Module):
         return x
 
 
-def _selective_checkpoint_policy(ctx, op, *args, **kwargs):
-    """Global policy function that can be pickled."""
-    aten = torch.ops.aten
-    compute_intensive_ops = [
-        aten.mm.default,
-        aten.bmm.default,
-        aten.addmm.default,
-    ]
+# Create a global policy function - NO nested functions!
+aten = torch.ops.aten
+_COMPUTE_INTENSIVE_OPS = [
+    aten.mm.default,
+    aten.bmm.default,
+    aten.addmm.default,
+]
 
-    if op in compute_intensive_ops:
+def _global_policy_fn(ctx, op, *args, **kwargs):
+    """Global policy function with no local dependencies."""
+    if op in _COMPUTE_INTENSIVE_OPS:
         return CheckpointPolicy.PREFER_SAVE
     else:
         return CheckpointPolicy.PREFER_RECOMPUTE
@@ -101,10 +102,7 @@ class BandSequenceModelModule(nn.Module):
         ]
 
         # Use the global function directly
-        self.ac_context_fn = functools.partial(
-            create_selective_checkpoint_contexts,
-            _selective_checkpoint_policy
-        )
+        self._ac_context_fn = None  # Will be created lazily
 
         input_dim_size = input_dim_size // n_heads
         hidden_dim_size = hidden_dim_size // n_heads
@@ -123,6 +121,16 @@ class BandSequenceModelModule(nn.Module):
             self.bsrnn.append(
                 nn.Sequential(rnn_across_t, rnn_across_k)
             )
+
+    @property
+    def ac_context_fn(self):
+        """Lazy property to create the context function when needed."""
+        if self._ac_context_fn is None:
+            self._ac_context_fn = functools.partial(
+                create_selective_checkpoint_contexts,
+                _global_policy_fn
+            )
+        return self._ac_context_fn
 
     def forward(self, x: torch.Tensor):
         """
