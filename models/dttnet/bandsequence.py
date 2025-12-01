@@ -106,7 +106,7 @@ class BandSequenceModelModule(nn.Module):
         ]
 
         self.policy = SelectiveCheckpointPolicy()
-        self.ac_context_fn = functools.partial(create_selective_checkpoint_contexts, self.policy_fn)
+        self.ac_context_fn = functools.partial(create_selective_checkpoint_contexts, self.policy)
 
 
         input_dim_size = input_dim_size // n_heads
