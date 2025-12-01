@@ -30,7 +30,7 @@ model:
   audio_ch: 2
 
 training:
-  batch_size: 4
+  batch_size: 8
   gradient_accumulation_steps: 1
   grad_clip: 0
   instruments:
@@ -55,7 +55,7 @@ training:
   coarse_loss_clip: true
   ema_momentum: 0.999
   optimizer: adamw
-  lr: 1.0e-04
+  lr: 2.0e-04
   other_fix: false # it's needed for checking on multisong dataset if other is actually instrumental
   use_amp: true # enable or disable usage of mixed precision (float16) - usually it must be true
   compile: true
