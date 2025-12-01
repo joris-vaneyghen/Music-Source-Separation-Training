@@ -150,6 +150,9 @@ def train_model(args: argparse.Namespace) -> None:
         None
     """
 
+    # Increase cache size limit
+    torch._dynamo.config.cache_size_limit = 64
+
     args = parse_args_train(args)
 
     initialize_environment(args.seed, args.results_path)
