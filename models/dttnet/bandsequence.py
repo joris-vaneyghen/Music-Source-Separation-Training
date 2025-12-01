@@ -58,6 +58,24 @@ class RNNModule(nn.Module):
         return x
 
 
+# Define policy function at module level so it can be pickled
+def _create_selective_checkpoint_policy():
+    """Create selective checkpoint policy function at module level."""
+    aten = torch.ops.aten
+    compute_intensive_ops = [
+        aten.mm.default,
+        aten.bmm.default,
+        aten.addmm.default,
+    ]
+
+    def policy_fn(ctx, op, *args, **kwargs):
+        if op in compute_intensive_ops:
+            return CheckpointPolicy.PREFER_SAVE
+        else:
+            return CheckpointPolicy.PREFER_RECOMPUTE
+
+    return policy_fn
+
 class BandSequenceModelModule(nn.Module):
     """
     BandSequence (2nd) Module of BandSplitRNN.
@@ -86,12 +104,7 @@ class BandSequenceModelModule(nn.Module):
             aten.addmm.default,
         ]
 
-        def policy_fn(ctx, op, *args, **kwargs):
-            if op in compute_intensive_ops:
-                return CheckpointPolicy.PREFER_SAVE
-            else:
-                return CheckpointPolicy.PREFER_RECOMPUTE
-
+        self.policy_fn = _create_selective_checkpoint_policy()
         self.ac_context_fn = functools.partial(create_selective_checkpoint_contexts, policy_fn)
 
 
