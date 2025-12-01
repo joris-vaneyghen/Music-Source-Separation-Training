@@ -1,4 +1,5 @@
 import torch.nn as nn
+from einops import rearrange
 
 from models.moises_light.batch_norm import get_norm
 
@@ -30,7 +31,7 @@ class SplitModule(nn.Module):
 
 
 class SplitMergeModule(nn.Module):
-    def __init__(self, c_in, c_out, l, f, k, bn, bn_norm, dense=False, bias=True, n_band=4):
+    def __init__(self, c_in, c_out, l, f, k, bn, bn_norm, bias=True, n_band=4):
 
         super(SplitMergeModule, self).__init__()
 
@@ -39,7 +40,7 @@ class SplitMergeModule(nn.Module):
         self.tfc1 = SplitModule(c_in, c_out, l, k, bn_norm, n_band)
         self.tfc2 = SplitModule(c_in, c_out, l, k, bn_norm, n_band)
 
-        self.res = SplitModule(c_in, c_out, 1, k, bn_norm, 1)
+        self.res = SplitModule(c_in//n_band, c_in//n_band, 1, k, bn_norm, 1)
 
         self.tdf = nn.Sequential(
             nn.Linear(f, f // bn, bias=bias),
@@ -51,7 +52,9 @@ class SplitMergeModule(nn.Module):
         )
 
     def forward(self, x):
-        res = self.res(x)
+        res = rearrange(x, 'b (g c) t f -> (b g) c t f', g=self.n_band)
+        res = self.res(res)
+        res = rearrange(res, '(b g) c t f -> b (g c) t f', g=self.n_band)
         x = self.tfc1(x)
         x = x + self.tdf(x)
         x = self.tfc2(x)

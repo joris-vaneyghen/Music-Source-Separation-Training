@@ -200,13 +200,8 @@ class MoisesLight(AbstractModel):
         x = self.stft(x)
         x = x.transpose(-1, -2)
 
-        B, C, T, F = x.shape
-        # print('B, C, T, F ', x.shape)
-
         # Split frequency into n_band equal parts
-        x = x.reshape(B, C, self.n_band, T, F // self.n_band)
-        x = x.permute(0, 2, 1, 3, 4).contiguous()  # (B, n_band, C, T, F//n_band)
-        x = x.reshape(B, self.n_band * C, T, F // self.n_band)  # (B, C*n_band, T, F//n_band)
+        x = rearrange(x, 'b c t (g f) -> b (g c) t f', g=self.n_band)
 
         # print('B, C*n_band, T, F//n_band', x.shape)
 
@@ -278,10 +273,7 @@ class MoisesLight(AbstractModel):
         # print('B, C*n_band, T, F//n_band', x.shape)
 
         # Merge subbands back (reverse of the splitting operations)
-        x = x.reshape(B, self.n_band, C, T, F // self.n_band)  # (B, n_band, C, T, F//n_band)
-        x = x.permute(0, 2, 1, 3, 4).contiguous()  # (B, C, n_band, T, F//n_band)
-        x = x.reshape(B, C, T, F)  # (B, C, T, F)
-        # print('B, C, T, F ', x.shape)
+        x =rearrange(x, 'b (g c) t f -> b c t (g f)', g=self.n_band)
 
         x = x.transpose(-1, -2)
 
